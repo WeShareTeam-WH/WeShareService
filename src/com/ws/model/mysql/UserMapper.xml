@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.ws.model.User">
+  <resultMap id="userMap" type="User">
+    <id property="pk_id" column="id"></id>
+    <result property="open_id" column="openId"/>
+    <result property="name" column="name"/>
+    <result property="phone" column="phone"/>
+    <result property="vartar" column="vartar"/>
+    <result property="deleted" column="deleted"/>
+  </resultMap>
+
+  <select id="queryAllUser" resultMap="userMap" parameterType="map">
+      <![CDATA[
+          SELECT
+            pk_id,open_id,name,phone,vartar,deleted
+          FROM
+            ws_user
+          WHERE 
+              deleted = false
+          ORDER BY
+              modify_time DESC
+          LIMIT
+              #{pageSize}
+          OFFSET
+              #{offset}
+      ]]>
+  </select>
+
+  <select id="getUserCount" resultType="Integer">
+        <![CDATA[
+            SELECT
+                count(pk_id)
+            FROM
+                ws_user
+            WHERE 
+                deleted = false  
+        ]]>
+   </select>
+
+   <select id="getUserByName" parameterType="String" resultMap="userMap">
+      <![CDATA[
+          SELECT
+              pk_id,open_id,name,phone,vartar,deleted
+          FROM
+              ws_user
+          WHERE
+              name = #{loginName}
+      ]]>
+  </select>
+
+  <update id="updateUser" parameterType="User">
+      <![CDATA[
+          UPDATE ws_user 
+          SET open_id = #{openId}, name = #{name}, phone = #{phone}, vartar = #{vartar}
+          WHERE pk_id = #{id}
+      ]]>
+  </update>
+
+  <insert id="createUser" parameterType="User" useGeneratedKeys="true" keyProperty="id">
+      <![CDATA[
+          INSERT INTO
+              ws_user(open_id,name,phone,vartar,deleted,create_time,create_by,modify_time,modify_by)
+          VALUES
+              (#{openId}, #{name}, #{phone}, #{vartar}, #{deleted}, Now(), #{createBy}, Now(), #{modifyBy})
+      ]]>
+  </insert>
+
+  <update id="deleteUser" parameterType="int">
+      <![CDATA[
+          UPDATE ws_user 
+          SET deleted=1
+          WHERE pk_id = #{id}
+      ]]>
+  </update>
+</mapper>

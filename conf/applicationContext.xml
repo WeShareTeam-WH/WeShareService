@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xmlns:context="http://www.springframework.org/schema/context"
+xmlns:tx="http://www.springframework.org/schema/tx"
+xmlns:aop="http://www.springframework.org/schema/aop"
+xsi:schemaLocation="
+    http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+    http://www.springframework.org/schema/aop
+    http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+    http://www.springframework.org/schema/cache
+    http://www.springframework.org/schema/cache/spring-cache-4.3.xsd
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context-4.3.xsd
+    http://www.springframework.org/schema/mvc
+    http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd
+    http://www.springframework.org/schema/util
+    http://www.springframework.org/schema/util/spring-util-4.3.xsd
+    http://www.springframework.org/schema/tx
+    http://www.springframework.org/schema/tx/spring-tx-4.3.xsd">
+
+    <!-- jdbc properties -->
+    <bean id="jdbcConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:jdbc.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- jdbc data source -->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+        <property name="driverClass" value="${jdbc.driver}"></property>
+        <property name="jdbcUrl" value="${connection.string}"></property>
+        <property name="user" value="${jdbc.user}"></property>
+        <property name="password" value="${jdbc.password}"></property>
+        <property name="maxPoolSize" value="20"/>
+        <property name="minPoolSize" value="5"/>
+        <property name="acquireIncrement" value="3"/>
+        <property name="initialPoolSize" value="5"/>
+    </bean>
+
+    <!-- MyBatis template -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource"></property>
+        <property name="typeAliasesPackage" value="com.ws.model"></property>
+        <property name="mapperLocations" value="classpath*:com/ws/model/mysql/*Mapper.xml"></property>
+    </bean>
+    <bean id="sqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+        <constructor-arg index="0" ref="sqlSessionFactory"></constructor-arg>
+    </bean>
+    <bean id="basedao" abstract="true">
+        <property name="sqlSessionTemplate" ref="sqlSessionTemplate"></property>
+    </bean>
+    <bean id="userDao" class="com.ws.dao.impl.UserDaoImpl" parent="basedao"/>
+
+    <!-- Controller -->
+    <bean id="userController" class="com.ws.controller.UserController">
+        <property name="userService" ref="userService"/>
+    </bean>
+
+    <!-- Service -->
+    <bean id="userService" class="com.ws.service.impl.UserServiceImpl">
+        <property name="userDao" ref="userDao"/>
+    </bean>
+
+    <bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+     <property name="maxUploadSize" value="104857600" />
+     <property name="maxInMemorySize" value="4096" />
+     <property name="defaultEncoding" value="UTF-8"></property>
+    </bean>
+
+    <!-- block -->
+    <bean id="paginationBlock" class="com.ws.block.PaginationBlock">
+      <property name="template" value="/WEB-INF/jsp/pagination.jsp"></property>
+    </bean>
+
+    <!-- Log class -->
+    <bean id="logMethodTime" class="com.ws.service.impl.LogMethodTime"></bean>
+    
+    <!-- Transaction -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"></property>
+    </bean>
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="updateUser" propagation="REQUIRED" read-only="false" rollback-for="java.lang.RuntimeException"/>
+            <tx:method name="*" propagation="SUPPORTS" read-only="true"/>
+        </tx:attributes>
+    </tx:advice>
+    <aop:config>
+        <aop:pointcut expression="execution(* com.ws.service..*.*(..))" id="pc"/>
+        <aop:advisor advice-ref="logMethodTime" pointcut-ref="pc" order="1"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="pc" order="2"/>
+    </aop:config>
+    <bean class="com.ws.util.SpringUtil"></bean>
+</beans>
